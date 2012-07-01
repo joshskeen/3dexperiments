@@ -1,17 +1,215 @@
 <!DOCTYPE html>
 <html>
 	<head>
-	</head>
+	 <style>
+body{
+  margin:0;
+  border:0;
+  padding:0;
+  height: 100%;
+ background-color:black !important;
+}
+
+html {
+  height: 100%;
+}
+
+#container{
+  height:99%;
+  width:100%;
+  position:absolute;
+  z-index:3;
+}
+
+   </style>
+
+  </head>
+
 	<body>
-	<div id="container">
-	</div>
-		<script src='./lib/jquery.min.js'></script>
-		<script src='./lib/three.js/build/Three.js'></script>
-		<script src='./lib/dat-gui/build/dat.gui.min.js'></script>
-		<script type="text/javascript">
-    var obj = { x: 5 };
-    var gui = new dat.GUI();
-	gui.add(obj, 'x');	
+  	<div id="container">
+  	</div>
+    <video src="/vid/fantastic.webm" id="videl"></video>
+
+		<script src='./script/jquery.min.js'></script>
+		<script src='./script/three.js'></script>
+		
+    <script type="text/javascript">
+   
+var planes = [];
+var WIDTH = window.innerWidth,
+  HEIGHT =window.innerHeight;
+
+
+Filters = {};
+Filters.getPixels = function(ctx) {
+  ctx.drawImage(img);
+  return ctx.getImageData(0,0,c.width,c.height);
+};
+
+Filters.getCanvas = function(w,h) {
+  var c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  return c;
+};
+
+Filters.filterImage = function(filter, image, var_args) {
+  var args = [this.getPixels(image)];
+  for (var i=2; i<arguments.length; i++) {
+    args.push(arguments[i]);
+  }
+  return filter.apply(null, args);
+};
+
+Filters.grayscale = function(pixels, args) {
+  var d = pixels.data;
+  for (var i=0; i<d.length; i+=4) {
+    var r = d[i];
+    var g = d[i+1];
+    var b = d[i+2];
+    // CIE luminance for the RGB
+    // The human eye is bad at seeing red and blue, so we de-emphasize them.
+    var v = 0.2126*r + 0.7152*g + 0.0722*b;
+    d[i] = d[i+1] = d[i+2] = v
+  }
+  return pixels;
+};
+
+
+var $container = $('#container');
+
+var renderer = new THREE.WebGLRenderer();
+
+var camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 1, 4000);
+camera.position.y = -450;
+camera.position.z = 100;
+//camera.position.x = 100;
+camera.rotation.x = 75 * (Math.PI / 180);
+//camera.rotation.z = 20;
+var center = new THREE.Vector3();
+var scene = new THREE.Scene(); 
+scene.add(camera);
+var controls = new THREE.OrbitControls( camera );
+
+
+var ambientLight = new THREE.AmbientLight( 0xffffff );
+scene.add( ambientLight );
+
+light = new THREE.DirectionalLight( 0xffffff );
+light.position.set( 1, 1, 1 );
+scene.add( light );
+
+scene.fog = new THREE.FogExp2( 0xccfccc, 0.0005 );
+
+renderer.setSize(WIDTH, HEIGHT);
+
+$container.append(renderer.domElement);
+ 
+$(document).ready(function() {
+  var texture = THREE.ImageUtils.loadTexture("http://localhost:3000/img/joshcircuit_small.jpg");
+
+ var defaultposition = -50;
+
+  	  var pointLight = new THREE.PointLight(0xFFFFFF);
+     
+    $(window).load(function() {
+
+    $("#videl").get(0).addEventListener('loadedmetadata', function(){
+        $("#videl").get(0).play();
+        onWindowResize();
+
+        window.addEventListener( 'resize', onWindowResize, false );
+
+          animate();
+    });
+    
+
+    }); 
+
+
+function onWindowResize( event ) {
+        var WIDTH = window.innerWidth,
+        HEIGHT =window.innerHeight;
+        renderer.setSize(WIDTH, HEIGHT);
+  }
+
+     function animate() {
+        // note: three.js includes requestAnimationFrame shim
+        requestAnimationFrame( animate );
+        controls.update();
+        
+        render();
+    }
+
+    function render() {
+
+        image = document.createElement( 'canvas' );
+        image.width = 240;
+        image.height = 480;
+
+        imageContext = image.getContext( '2d' );
+        imageContext.fillStyle = '#000000';
+        imageContext.fillRect( 0, 0, 240, 320 );
+
+      video = $("#videl").get(0);
+
+      if ( video.readyState === video.HAVE_ENOUGH_DATA ) {
+          imageContext.drawImage( video, 0, 0 );
+          if ( texture ) texture.needsUpdate = true;
+      }
+       texture = new THREE.Texture( image );
+
+      var material = new THREE.MeshLambertMaterial({ map: texture , opacity: .1});
+      var plane = new THREE.Mesh(new THREE.PlaneGeometry(240, 320), material);
+      //plane.overdraw = true;
+      plane.doubleSided = true;
+      plane.position.x = 0;
+      plane.position.y = 0;
+      plane.position.z = 0;
+      //plane.geometry.dynamic = true;
+
+      var video = $("#videl").get(0);
+
+      plane.position.y += defaultposition += .15;
+      console.log(defaultposition);
+
+      // planes.push(plane);
+      // scene.add(plane);
+
+      if( video.readyState === video.HAVE_ENOUGH_DATA ){
+          texture.needsUpdate = true;
+      }
+      
+        controls.addEventListener( 'change', render );
+      //render goes here
+      var mod = 0;
+        for(var i = 0; i < planes.length; i++){
+          var p = planes[i];
+          var mod = plane.position.y + defaultposition + (.25 * i);
+            p.position.y = mod;
+            p.position.x = mod / 100;
+            p.rotation.y = mod / 100;
+        }
+        plane.position.y = mod;
+        plane.position.x = mod / 100;
+        plane.rotation.y = mod / 100;
+        if(planes.length > 1000){
+          myplane = planes.pop();
+        //  scene.remove(myplane);
+        }
+       //plane.position = center;
+
+      planes.push(plane);
+      scene.add(plane);
+      renderer.render( scene, camera );
+    }
+
+
+});
+
+
+
   </script>
+
 	</body>
 </html>
